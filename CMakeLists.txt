@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(nrf51_template)
+project(nrf51822_ble_playground)
 
 enable_language(CXX)
 enable_language(ASM)
@@ -19,10 +19,34 @@ set(TARGET_LDFLAGS_EXTRA    "-Wl,--print-memory-usage")
 # Shared C source code
 set(TARGET_C_SOURCES
     "src/main.c"
+    "${NRF5_SDK_ROOT}/components/ble/ble_advertising/ble_advertising.c"
+    "${NRF5_SDK_ROOT}/components/ble/common/ble_advdata.c"
+    "${NRF5_SDK_ROOT}/components/ble/common/ble_conn_params.c"
+    "${NRF5_SDK_ROOT}/components/ble/common/ble_conn_state.c"
+    "${NRF5_SDK_ROOT}/components/ble/common/ble_srv_common.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/gatt_cache_manager.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/gatts_cache_manager.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/id_manager.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/peer_data.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/peer_data_storage.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/peer_database.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/peer_id.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/peer_manager.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/pm_buffer.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/pm_mutex.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/security_dispatcher.c"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager/security_manager.c"
     "${NRF5_SDK_ROOT}/components/boards/boards.c"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/clock/nrf_drv_clock.c"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/common/nrf_drv_common.c"
+    "${NRF5_SDK_ROOT}/components/drivers_nrf/gpiote/nrf_drv_gpiote.c"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/uart/nrf_drv_uart.c"
+    "${NRF5_SDK_ROOT}/components/libraries/bsp/bsp.c"
+    "${NRF5_SDK_ROOT}/components/libraries/bsp/bsp_btn_ble.c"
+    "${NRF5_SDK_ROOT}/components/libraries/button/app_button.c"
+    "${NRF5_SDK_ROOT}/components/libraries/crc16/crc16.c"
+    "${NRF5_SDK_ROOT}/components/libraries/fds/fds.c"
+    "${NRF5_SDK_ROOT}/components/libraries/fstorage/fstorage.c"
     "${NRF5_SDK_ROOT}/components/libraries/hardfault/hardfault_implementation.c"
     "${NRF5_SDK_ROOT}/components/libraries/log/src/nrf_log_backend_serial.c"
     "${NRF5_SDK_ROOT}/components/libraries/log/src/nrf_log_frontend.c"
@@ -32,6 +56,7 @@ set(TARGET_C_SOURCES
     "${NRF5_SDK_ROOT}/components/libraries/util/app_util_platform.c"
     "${NRF5_SDK_ROOT}/components/libraries/util/nrf_assert.c"
     "${NRF5_SDK_ROOT}/components/libraries/util/sdk_errors.c"
+    "${NRF5_SDK_ROOT}/components/libraries/util/sdk_mapped_flags.c"
     "${NRF5_SDK_ROOT}/components/toolchain/system_nrf51.c"
 )
 
@@ -49,15 +74,25 @@ set(TARGET_ASM_SOURCES
 set(TARGET_C_INCLUDES
     "config"
     "include"
+    "${NRF5_SDK_ROOT}/components/ble/ble_advertising"
+    "${NRF5_SDK_ROOT}/components/ble/common"
+    "${NRF5_SDK_ROOT}/components/ble/peer_manager"
     "${NRF5_SDK_ROOT}/components/boards"
     "${NRF5_SDK_ROOT}/components/device"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/clock"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/common"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/delay"
+    "${NRF5_SDK_ROOT}/components/drivers_nrf/gpiote"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/hal"
     "${NRF5_SDK_ROOT}/components/drivers_nrf/uart"
+    "${NRF5_SDK_ROOT}/components/libraries/bsp"
+    "${NRF5_SDK_ROOT}/components/libraries/button"
+    "${NRF5_SDK_ROOT}/components/libraries/experimental_section_vars"
+    "${NRF5_SDK_ROOT}/components/libraries/fds"
+    "${NRF5_SDK_ROOT}/components/libraries/fstorage"
     "${NRF5_SDK_ROOT}/components/libraries/log"
     "${NRF5_SDK_ROOT}/components/libraries/log/src"
+    "${NRF5_SDK_ROOT}/components/libraries/timer"
     "${NRF5_SDK_ROOT}/components/libraries/util"
     "${NRF5_SDK_ROOT}/components/toolchain"
     "${NRF5_SDK_ROOT}/components/toolchain/cmsis/include"
@@ -78,7 +113,6 @@ set(TARGET_C_INCLUDES_SD
 set(TARGET_C_DEFINES
     "NRF51"
     "${NRF5_DEVICE}"
-    "BSP_DEFINES_ONLY"
     "BOARD_CUSTOM"
     "SWI_DISABLE0"
     "USE_APP_CONFIG"
@@ -88,7 +122,7 @@ set(TARGET_C_DEFINES
 set(TARGET_DEFINES_SD
     "S130"
     "SOFTDEVICE_PRESENT"
-    "BLE_SUPPORT_REQD"
+    "BLE_STACK_SUPPORT_REQD"
     "NRF_SD_BLE_API_VERSION=2"
 )
 
@@ -124,10 +158,11 @@ set(CMAKE_EXE_LINKER_FLAGS "-specs=nano.specs -specs=nosys.specs -Wl,--gc-sectio
 
 # Different linker scripts for different flavors.
 # Note that SoftDevice requires certain memory ranges reserved for private use.
-set(TARGET_LDSCRIPT_BLANK_AA "${NRF5_SDK_ROOT}/components/toolchain/gcc/nrf51_xxaa.ld")       # Blank device
-set(TARGET_LDSCRIPT_BLANK_AC "${NRF5_SDK_ROOT}/components/toolchain/gcc/nrf51_xxac.ld")       # Blank device with additional 16KB SRAM
-set(TARGET_LDSCRIPT_SD_AA    "${CMAKE_SOURCE_DIR}/components/toolchain/gcc/nrf51_xxaa_sd.ld") # With SoftDevice
-set(TARGET_LDSCRIPT_SD_AC    "${CMAKE_SOURCE_DIR}/components/toolchain/gcc/nrf51_xxaa_sd.ld") # With SoftDevice and additional 16KB SRAM
+set(TARGET_LDSCRIPT_BLANK_AA "${NRF5_SDK_ROOT}/components/toolchain/gcc/nrf51_xxaa.ld")          # Blank device
+set(TARGET_LDSCRIPT_BLANK_AC "${NRF5_SDK_ROOT}/components/toolchain/gcc/nrf51_xxac.ld")          # Blank device with additional 16KB SRAM
+set(TARGET_LDSCRIPT_SD_AA    "${CMAKE_SOURCE_DIR}/components/toolchain/gcc/nrf51_xxaa_sd.ld")    # With SoftDevice
+set(TARGET_LDSCRIPT_SD_AC    "${CMAKE_SOURCE_DIR}/components/toolchain/gcc/nrf51_xxac_sd.ld")    # With SoftDevice and additional 16KB SRAM
+set(TARGET_LDSCRIPT_SD_FS_AC "${CMAKE_SOURCE_DIR}/components/toolchain/gcc/nrf51_xxac_sd_fs.ld") # With SoftDevice, flash storage and additional 16KB SRAM
 
 # Add shared includes, defines and libs
 include_directories(${TARGET_C_INCLUDES})
@@ -212,4 +247,26 @@ add_custom_command(OUTPUT "${CMAKE_PROJECT_NAME}_sd_xxac.hex" "${CMAKE_PROJECT_N
     DEPENDS "${CMAKE_PROJECT_NAME}_sd_xxac.elf"
 )
 add_custom_target("${CMAKE_PROJECT_NAME}_sd_xxac_hex" DEPENDS "${CMAKE_PROJECT_NAME}_sd_xxac.hex")
+# ================================================================================== #
+
+
+# =========================== AC variant, with SD and FS =========================== #
+add_executable("${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf" ${TARGET_C_SOURCES} ${TARGET_C_SOURCES_SD} ${TARGET_ASM_SOURCES})
+target_link_options("${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf"
+    PRIVATE "-T${TARGET_LDSCRIPT_SD_FS_AC}"
+    PRIVATE "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}_sd_fs_xxac.map,--cref"
+)
+target_include_directories("${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf" PRIVATE ${TARGET_C_INCLUDES_SD})
+target_compile_definitions("${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf" PRIVATE ${TARGET_DEFINES_SD})
+
+# Generate hex
+add_custom_command(OUTPUT "${CMAKE_PROJECT_NAME}_sd_fs_xxac.hex" "${CMAKE_PROJECT_NAME}_sd_fs_xxac_full.hex"
+    COMMAND ${CMAKE_OBJCOPY} "-O" "ihex" "${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf" "${CMAKE_PROJECT_NAME}_sd_fs_xxac.hex"
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/merge_hex.sh"
+            "${NRF5_SDK_ROOT}/components/softdevice/s130/hex/s130_nrf51_${NRF5_S130_VERSION}_softdevice.hex"
+            "${CMAKE_PROJECT_NAME}_sd_fs_xxac.hex"
+            "${CMAKE_PROJECT_NAME}_sd_fs_xxac_full.hex"
+    DEPENDS "${CMAKE_PROJECT_NAME}_sd_fs_xxac.elf"
+)
+add_custom_target("${CMAKE_PROJECT_NAME}_sd_fs_xxac_hex" DEPENDS "${CMAKE_PROJECT_NAME}_sd_fs_xxac.hex")
 # ================================================================================== #
