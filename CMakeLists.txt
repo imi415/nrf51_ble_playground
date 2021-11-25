@@ -92,6 +92,7 @@ set(TARGET_C_INCLUDES
     "${NRF5_SDK_ROOT}/components/libraries/fstorage"
     "${NRF5_SDK_ROOT}/components/libraries/log"
     "${NRF5_SDK_ROOT}/components/libraries/log/src"
+    "${NRF5_SDK_ROOT}/components/libraries/sensorsim"
     "${NRF5_SDK_ROOT}/components/libraries/timer"
     "${NRF5_SDK_ROOT}/components/libraries/util"
     "${NRF5_SDK_ROOT}/components/toolchain"

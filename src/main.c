@@ -1,5 +1,60 @@
+/**
+ * Copyright (c) 2014 - 2017, Nordic Semiconductor ASA
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form, except as embedded into a Nordic
+ *    Semiconductor ASA integrated circuit in a product or a software update for
+ *    such product, must reproduce the above copyright notice, this list of
+ *    conditions and the following disclaimer in the documentation and/or other
+ *    materials provided with the distribution.
+ *
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * 4. This software, with or without modification, must only be used with a
+ *    Nordic Semiconductor ASA integrated circuit.
+ *
+ * 5. Any software provided in binary form under this license must not be reverse
+ *    engineered, decompiled, modified and/or disassembled.
+ *
+ * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+/** @file
+ *
+ * @defgroup ble_sdk_app_template_main main.c
+ * @{
+ * @ingroup ble_sdk_app_template
+ * @brief Template project main file.
+ *
+ * This file contains a template for creating a new application. It has the code necessary to wakeup
+ * from button, advertise, get a connection restart advertising on disconnect and if no new
+ * connection created go back to system-off mode.
+ * It can easily be used as a starting point for creating a new application, the comments identified
+ * with 'YOUR_JOB' indicates where and how you can customize.
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "app_error.h"
 #include "app_timer.h"
@@ -17,13 +72,12 @@
 #include "fstorage.h"
 #include "nordic_common.h"
 #include "nrf.h"
-#include "nrf_delay.h"
 #include "nrf_gpio.h"
 #include "peer_manager.h"
+#include "sensorsim.h"
 #include "softdevice_handler.h"
 
-/* Logging section */
-#define NRF_LOG_MODULE_NAME "MAIN"
+#define NRF_LOG_MODULE_NAME "APP"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 
@@ -67,20 +121,40 @@
 
 #define DEAD_BEEF                      0xDEADBEEF
 
-static uint16_t   m_conn_handle = BLE_CONN_HANDLE_INVALID;
-static ble_uuid_t m_adv_uuids[] = {{
-    BLE_UUID_DEVICE_INFORMATION_SERVICE,
-    BLE_UUID_TYPE_BLE,
-}};
+static uint16_t m_conn_handle   = BLE_CONN_HANDLE_INVALID;
+
+/* YOUR_JOB: Declare all services structure your application is using
+   static ble_xx_service_t                     m_xxs;
+   static ble_yy_service_t                     m_yys;
+ */
+
+// YOUR_JOB: Use UUIDs for service(s) used in your application.
+static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}};
 
 static void advertising_start(void);
 
-void assert_nrf_callback(uint16_t line_num, const uint8_t* p_file_name) {
+/**@brief Callback function for asserts in the SoftDevice.
+ *
+ * @details This function will be called in case of an assert in the SoftDevice.
+ *
+ * @warning This handler is an example only and does not fit a final product. You need to analyze
+ *          how your product is supposed to react in case of Assert.
+ * @warning On assert from the SoftDevice, the system can only recover on reset.
+ *
+ * @param[in] line_num   Line number of the failing ASSERT call.
+ * @param[in] file_name  File name of the failing ASSERT call.
+ */
+void assert_nrf_callback(uint16_t line_num, const uint8_t *p_file_name) {
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-static void pm_evt_handler(pm_evt_t const* p_evt) {
+/**@brief Function for handling Peer Manager events.
+ *
+ * @param[in] p_evt  Peer Manager event.
+ */
+static void pm_evt_handler(pm_evt_t const *p_evt) {
     ret_code_t err_code;
+
     switch (p_evt->evt_id) {
         case PM_EVT_BONDED_PEER_CONNECTED: {
             NRF_LOG_INFO("Connected to a previously bonded device.\r\n");
@@ -188,7 +262,7 @@ static void gap_params_init(void) {
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
-    err_code = sd_ble_gap_device_name_set(&sec_mode, (const uint8_t*)DEVICE_NAME, strlen(DEVICE_NAME));
+    err_code = sd_ble_gap_device_name_set(&sec_mode, (const uint8_t *)DEVICE_NAME, strlen(DEVICE_NAME));
     APP_ERROR_CHECK(err_code);
 
     /* YOUR_JOB: Use an appearance value matching the application's use case.
@@ -269,7 +343,7 @@ static void services_init(void) {
  *
  * @param[in] p_evt  Event received from the Connection Parameters Module.
  */
-static void on_conn_params_evt(ble_conn_params_evt_t* p_evt) {
+static void on_conn_params_evt(ble_conn_params_evt_t *p_evt) {
     uint32_t err_code;
 
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
@@ -361,7 +435,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
  *
  * @param[in] p_ble_evt  Bluetooth stack event.
  */
-static void on_ble_evt(ble_evt_t* p_ble_evt) {
+static void on_ble_evt(ble_evt_t *p_ble_evt) {
     uint32_t err_code = NRF_SUCCESS;
 
     switch (p_ble_evt->header.evt_id) {
@@ -441,7 +515,7 @@ static void on_ble_evt(ble_evt_t* p_ble_evt) {
  *
  * @param[in] p_ble_evt  Bluetooth stack event.
  */
-static void ble_evt_dispatch(ble_evt_t* p_ble_evt) {
+static void ble_evt_dispatch(ble_evt_t *p_ble_evt) {
     /** The Connection state module has to be fed BLE events in order to function correctly
      * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
     ble_conn_state_on_ble_evt(p_ble_evt);
@@ -611,7 +685,7 @@ static void advertising_init(void) {
  *
  * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
-static void buttons_leds_init(bool* p_erase_bonds) {
+static void buttons_leds_init(bool *p_erase_bonds) {
     bsp_event_t startup_event;
 
     uint32_t err_code =
@@ -641,11 +715,13 @@ static void advertising_start(void) {
     APP_ERROR_CHECK(err_code);
 }
 
-int main(const int argc, const char* argv[]) {
+/**@brief Function for application main entry.
+ */
+int main(void) {
     uint32_t err_code;
-    bool erase_bonds;
+    bool     erase_bonds;
 
-    /* Initialize the log module */
+    // Initialize.
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
 
@@ -653,25 +729,28 @@ int main(const int argc, const char* argv[]) {
     buttons_leds_init(&erase_bonds);
     ble_stack_init();
     peer_manager_init(erase_bonds);
-    if(erase_bonds == true) {
+    if (erase_bonds == true) {
         NRF_LOG_INFO("Bonds erased!\r\n");
     }
-
     gap_params_init();
     advertising_init();
     services_init();
     conn_params_init();
 
-    NRF_LOG_INFO("Template started.\r\n");
+    // Start execution.
+    NRF_LOG_INFO("Template started\r\n");
     application_timers_start();
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
-    for(;;) {
-        if(NRF_LOG_PROCESS() == false) {
+    // Enter main loop.
+    for (;;) {
+        if (NRF_LOG_PROCESS() == false) {
             power_manage();
         }
     }
-
-    return 0;
 }
+
+/**
+ * @}
+ */
